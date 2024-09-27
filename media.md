@@ -753,3 +753,611 @@ player.addListener(object : Player.Listener {
 4. 如果播放列表动态变化，可以通过实现 `Player.Listener` 来监听变化。
 
 确保在适当的生命周期方法中初始化和释放 ExoPlayer，以避免内存泄漏和其他资源管理问题。如果您有更多关于 ExoPlayer 的问题，欢迎继续提问！
+
+
+
+
+
+
+在 **ExoPlayer** 中，`MediaMetadata` 用于存储与媒体项相关的元数据（如标题、艺术家、专辑等）。有时候，您可能需要存储额外的信息，这些信息并未被 `MediaMetadata` 的标准字段覆盖。这时，`setExtras` 方法就派上用场了。通过 `setExtras`，您可以为 `MediaMetadata` 添加自定义的扩展数据，以满足更复杂的需求。
+
+本文将详细介绍如何使用 `MediaMetadata.setExtras` 方法，包括 **Java** 和 **Kotlin** 的代码示例，以及如何在 ExoPlayer 中应用这些扩展数据。
+
+## 目录
+
+1. [理解 `setExtras`](#理解-setextras)
+2. [使用 `setExtras` 添加自定义数据](#使用-setextras-添加自定义数据)
+    - [Java 示例](#java-示例)
+    - [Kotlin 示例](#kotlin-示例)
+3. [获取和使用 `extras`](#获取和使用-extras)
+    - [Java 示例](#java-示例-1)
+    - [Kotlin 示例](#kotlin-示例-1)
+4. [完整示例](#完整示例)
+    - [Java 完整示例](#java-完整示例)
+    - [Kotlin 完整示例](#kotlin-完整示例)
+5. [最佳实践](#最佳实践)
+6. [注意事项](#注意事项)
+7. [总结](#总结)
+
+---
+
+## 理解 `setExtras`
+
+`setExtras` 方法允许您将自定义的数据存储在 `MediaMetadata` 中。这些数据通常以 **Bundle** 或 **Map** 的形式存在，可以包含任何您需要的信息，如歌词、封面图片URL、播放次数等。
+
+### 方法签名
+
+```kotlin
+fun setExtras(extras: Bundle?): MediaMetadata.Builder
+```
+
+```java
+public MediaMetadata.Builder setExtras(@Nullable Bundle extras)
+```
+
+- **参数**：
+  - `extras`：一个包含自定义数据的 `Bundle` 对象，可以为 `null`。
+
+- **返回值**：
+  - 返回当前的 `MediaMetadata.Builder` 实例，以便进行链式调用。
+
+## 使用 `setExtras` 添加自定义数据
+
+### Java 示例
+
+以下示例展示了如何在创建 `MediaMetadata` 时使用 `setExtras` 添加自定义数据：
+
+```java
+import android.net.Uri;
+import android.os.Bundle;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.MediaMetadata;
+
+// 创建一个 Bundle 来存储自定义数据
+Bundle extras = new Bundle();
+extras.putString("lyrics", "这是一首示例歌曲的歌词...");
+extras.putString("coverImageUrl", "https://example.com/cover.jpg");
+extras.putInt("playCount", 123);
+
+// 创建 MediaMetadata 并设置标准字段及 extras
+MediaMetadata mediaMetadata = new MediaMetadata.Builder()
+        .setTitle("示例歌曲")
+        .setArtist("示例艺术家")
+        .setAlbumTitle("示例专辑")
+        .setExtras(extras) // 添加自定义数据
+        .build();
+
+// 创建 MediaItem 并关联 MediaMetadata
+MediaItem mediaItem = new MediaItem.Builder()
+        .setUri(Uri.parse("https://example.com/song.mp3"))
+        .setMediaMetadata(mediaMetadata)
+        .build();
+```
+
+### Kotlin 示例
+
+以下示例展示了如何在创建 `MediaMetadata` 时使用 `setExtras` 添加自定义数据：
+
+```kotlin
+import android.net.Uri
+import android.os.Bundle
+import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.MediaMetadata
+
+// 创建一个 Bundle 来存储自定义数据
+val extras = Bundle().apply {
+    putString("lyrics", "这是一首示例歌曲的歌词...")
+    putString("coverImageUrl", "https://example.com/cover.jpg")
+    putInt("playCount", 123)
+}
+
+// 创建 MediaMetadata 并设置标准字段及 extras
+val mediaMetadata = MediaMetadata.Builder()
+    .setTitle("示例歌曲")
+    .setArtist("示例艺术家")
+    .setAlbumTitle("示例专辑")
+    .setExtras(extras) // 添加自定义数据
+    .build()
+
+// 创建 MediaItem 并关联 MediaMetadata
+val mediaItem = MediaItem.Builder()
+    .setUri(Uri.parse("https://example.com/song.mp3"))
+    .setMediaMetadata(mediaMetadata)
+    .build()
+```
+
+## 获取和使用 `extras`
+
+在某些情况下，您可能需要在播放过程中或在其他组件中获取和使用这些自定义数据。以下是如何检索 `extras` 的示例。
+
+### Java 示例
+
+```java
+// 获取当前 MediaItem 的 MediaMetadata
+MediaMetadata currentMetadata = player.getCurrentMediaItem().mediaMetadata;
+
+// 获取 extras
+Bundle extras = currentMetadata.extras;
+
+if (extras != null) {
+    String lyrics = extras.getString("lyrics");
+    String coverImageUrl = extras.getString("coverImageUrl");
+    int playCount = extras.getInt("playCount", 0);
+
+    // 使用这些数据，例如更新 UI
+    Log.d("ExoPlayer", "歌词: " + lyrics);
+    Log.d("ExoPlayer", "封面图片URL: " + coverImageUrl);
+    Log.d("ExoPlayer", "播放次数: " + playCount);
+}
+```
+
+### Kotlin 示例
+
+```kotlin
+// 获取当前 MediaItem 的 MediaMetadata
+val currentMetadata = player.currentMediaItem?.mediaMetadata
+
+// 获取 extras
+val extras = currentMetadata?.extras
+
+if (extras != null) {
+    val lyrics = extras.getString("lyrics")
+    val coverImageUrl = extras.getString("coverImageUrl")
+    val playCount = extras.getInt("playCount", 0)
+
+    // 使用这些数据，例如更新 UI
+    Log.d("ExoPlayer", "歌词: $lyrics")
+    Log.d("ExoPlayer", "封面图片URL: $coverImageUrl")
+    Log.d("ExoPlayer", "播放次数: $playCount")
+}
+```
+
+## 完整示例
+
+为了更好地理解 `setExtras` 的使用，以下是一个完整的 **Kotlin** 示例，展示如何在 ExoPlayer 中添加自定义数据，并在播放过程中检索和使用这些数据。
+
+### Kotlin 完整示例
+
+#### 1. 布局文件 (`activity_main.xml`)
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:gravity="center"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- 显示歌曲标题的 TextView -->
+    <TextView
+        android:id="@+id/title_text_view"
+        android:text="歌曲标题"
+        android:textSize="18sp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <!-- 显示艺术家的 TextView -->
+    <TextView
+        android:id="@+id/artist_text_view"
+        android:text="艺术家名称"
+        android:textSize="16sp"
+        android:layout_marginTop="4dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <!-- 显示封面图片的 ImageView -->
+    <ImageView
+        android:id="@+id/cover_image_view"
+        android:layout_marginTop="16dp"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:scaleType="centerCrop"
+        android:contentDescription="封面图片" />
+
+    <!-- 显示歌词的 TextView -->
+    <TextView
+        android:id="@+id/lyrics_text_view"
+        android:text="歌词将显示在这里..."
+        android:textSize="14sp"
+        android:layout_marginTop="16dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <!-- 播放按钮 -->
+    <Button
+        android:id="@+id/play_button"
+        android:text="播放"
+        android:layout_marginTop="16dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+</LinearLayout>
+```
+
+#### 2. Kotlin 代码 (`MainActivity.kt`)
+
+```kotlin
+import android.os.Bundle
+import android.util.Log
+import android.widget.Button
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.MediaMetadata
+import com.google.android.exoplayer2.SimpleExoPlayer
+import com.squareup.picasso.Picasso
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var player: SimpleExoPlayer
+    private lateinit var titleTextView: TextView
+    private lateinit var artistTextView: TextView
+    private lateinit var coverImageView: ImageView
+    private lateinit var lyricsTextView: TextView
+    private lateinit var playButton: Button
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // 设置布局
+        setContentView(R.layout.activity_main)
+
+        // 初始化 UI 组件
+        titleTextView = findViewById(R.id.title_text_view)
+        artistTextView = findViewById(R.id.artist_text_view)
+        coverImageView = findViewById(R.id.cover_image_view)
+        lyricsTextView = findViewById(R.id.lyrics_text_view)
+        playButton = findViewById(R.id.play_button)
+
+        // 初始化 ExoPlayer
+        player = SimpleExoPlayer.Builder(this).build()
+        // 如果有 PlayerView，可以将 player 绑定到 PlayerView
+        // val playerView = findViewById<PlayerView>(R.id.player_view)
+        // playerView.player = player
+
+        // 创建自定义数据
+        val extras = Bundle().apply {
+            putString("lyrics", "这是一首示例歌曲的歌词...\n换行示例")
+            putString("coverImageUrl", "https://www.example.com/cover.jpg")
+            putInt("playCount", 42)
+        }
+
+        // 创建 MediaMetadata 并设置标准字段及 extras
+        val mediaMetadata = MediaMetadata.Builder()
+            .setTitle("示例歌曲")
+            .setArtist("示例艺术家")
+            .setAlbumTitle("示例专辑")
+            .setExtras(extras) // 添加自定义数据
+            .build()
+
+        // 创建 MediaItem 并关联 MediaMetadata
+        val mediaItem = MediaItem.Builder()
+            .setUri("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
+            .setMediaMetadata(mediaMetadata)
+            .build()
+
+        // 将 MediaItem 添加到播放器
+        player.setMediaItem(mediaItem)
+        player.prepare()
+
+        // 设置播放按钮点击事件
+        playButton.setOnClickListener {
+            if (player.isPlaying) {
+                player.pause()
+                playButton.text = "播放"
+            } else {
+                player.play()
+                playButton.text = "暂停"
+            }
+        }
+
+        // 添加 Player.Listener 以监听播放状态变化
+        player.addListener(object : Player.Listener {
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                super.onMediaItemTransition(mediaItem, reason)
+                mediaItem?.let {
+                    updateUI(it)
+                }
+            }
+
+            override fun onPlaybackStateChanged(state: Int) {
+                super.onPlaybackStateChanged(state)
+                if (state == Player.STATE_READY) {
+                    // 更新 UI 初始状态
+                    player.currentMediaItem?.let { updateUI(it) }
+                }
+            }
+        })
+    }
+
+    private fun updateUI(mediaItem: MediaItem) {
+        val metadata = mediaItem.mediaMetadata
+        titleTextView.text = metadata.title ?: "未知标题"
+        artistTextView.text = metadata.artist ?: "未知艺术家"
+
+        // 获取 extras
+        val extras = metadata.extras
+        if (extras != null) {
+            val lyrics = extras.getString("lyrics") ?: "暂无歌词"
+            val coverImageUrl = extras.getString("coverImageUrl")
+            val playCount = extras.getInt("playCount", 0)
+
+            lyricsTextView.text = lyrics
+
+            if (!coverImageUrl.isNullOrEmpty()) {
+                // 使用 Picasso 加载封面图片
+                Picasso.get()
+                    .load(coverImageUrl)
+                    .placeholder(R.drawable.placeholder) // 替换为您的占位图
+                    .error(R.drawable.error) // 替换为您的错误图
+                    .into(coverImageView)
+            } else {
+                coverImageView.setImageResource(R.drawable.placeholder) // 替换为您的占位图
+            }
+
+            Log.d("ExoPlayer", "播放次数: $playCount")
+            // 可以在 UI 中显示播放次数，如增加一个 TextView
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // 释放 ExoPlayer 资源
+        player.release()
+    }
+}
+```
+
+#### 说明：
+
+1. **添加自定义数据**：
+    - 创建一个 `Bundle` 对象，存储自定义数据，如歌词、封面图片URL、播放次数等。
+    - 使用 `setExtras` 方法将 `Bundle` 添加到 `MediaMetadata` 中。
+
+2. **关联 `MediaMetadata` 到 `MediaItem`**：
+    - 在创建 `MediaItem` 时，通过 `setMediaMetadata` 方法将 `MediaMetadata` 关联到 `MediaItem`。
+
+3. **监听播放状态变化**：
+    - 通过实现 `Player.Listener` 并重写 `onMediaItemTransition` 和 `onPlaybackStateChanged` 方法，监听播放项的切换和播放状态变化。
+    - 在播放项切换或准备就绪时，调用 `updateUI` 方法更新界面。
+
+4. **更新 UI**：
+    - 在 `updateUI` 方法中，从 `MediaMetadata` 中提取标准字段（如标题、艺术家）和自定义数据（`extras`）。
+    - 使用第三方库（如 Picasso）加载封面图片。
+    - 显示歌词和其他自定义数据。
+
+5. **资源管理**：
+    - 在 `onDestroy` 方法中释放 ExoPlayer 资源，防止内存泄漏。
+
+### Java 完整示例
+
+#### 1. 布局文件 (`activity_main.xml`)
+
+与 Kotlin 示例相同，此处省略。
+
+#### 2. Java 代码 (`MainActivity.java`)
+
+```java
+import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
+import androidx.appcompat.app.AppCompatActivity;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.MediaMetadata;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.squareup.picasso.Picasso;
+
+import android.os.Bundle;
+import android.os.Bundle;
+
+public class MainActivity extends AppCompatActivity {
+
+    private SimpleExoPlayer player;
+    private TextView titleTextView;
+    private TextView artistTextView;
+    private ImageView coverImageView;
+    private TextView lyricsTextView;
+    private Button playButton;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        // 设置布局
+        setContentView(R.layout.activity_main);
+
+        // 初始化 UI 组件
+        titleTextView = findViewById(R.id.title_text_view);
+        artistTextView = findViewById(R.id.artist_text_view);
+        coverImageView = findViewById(R.id.cover_image_view);
+        lyricsTextView = findViewById(R.id.lyrics_text_view);
+        playButton = findViewById(R.id.play_button);
+
+        // 初始化 ExoPlayer
+        player = new SimpleExoPlayer.Builder(this).build();
+        // 如果有 PlayerView，可以将 player 绑定到 PlayerView
+        // PlayerView playerView = findViewById(R.id.player_view);
+        // playerView.setPlayer(player);
+
+        // 创建自定义数据
+        Bundle extras = new Bundle();
+        extras.putString("lyrics", "这是一首示例歌曲的歌词...\n换行示例");
+        extras.putString("coverImageUrl", "https://www.example.com/cover.jpg");
+        extras.putInt("playCount", 42);
+
+        // 创建 MediaMetadata 并设置标准字段及 extras
+        MediaMetadata mediaMetadata = new MediaMetadata.Builder()
+                .setTitle("示例歌曲")
+                .setArtist("示例艺术家")
+                .setAlbumTitle("示例专辑")
+                .setExtras(extras) // 添加自定义数据
+                .build();
+
+        // 创建 MediaItem 并关联 MediaMetadata
+        MediaItem mediaItem = new MediaItem.Builder()
+                .setUri("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
+                .setMediaMetadata(mediaMetadata)
+                .build();
+
+        // 将 MediaItem 添加到播放器
+        player.setMediaItem(mediaItem);
+        player.prepare();
+
+        // 设置播放按钮点击事件
+        playButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                boolean isPlaying = player.isPlaying();
+                if (isPlaying) {
+                    player.pause();
+                    playButton.setText("播放");
+                } else {
+                    player.play();
+                    playButton.setText("暂停");
+                }
+            }
+        });
+
+        // 添加 Player.Listener 以监听播放状态变化
+        player.addListener(new Player.Listener() {
+            @Override
+            public void onMediaItemTransition(MediaItem mediaItem, int reason) {
+                super.onMediaItemTransition(mediaItem, reason);
+                if (mediaItem != null) {
+                    updateUI(mediaItem);
+                }
+            }
+
+            @Override
+            public void onPlaybackStateChanged(int state) {
+                super.onPlaybackStateChanged(state);
+                if (state == Player.STATE_READY) {
+                    // 更新 UI 初始状态
+                    MediaItem currentItem = player.getCurrentMediaItem();
+                    if (currentItem != null) {
+                        updateUI(currentItem);
+                    }
+                }
+            }
+        });
+    }
+
+    private void updateUI(MediaItem mediaItem) {
+        MediaMetadata metadata = mediaItem.mediaMetadata;
+        titleTextView.setText(metadata.title != null ? metadata.title.toString() : "未知标题");
+        artistTextView.setText(metadata.artist != null ? metadata.artist.toString() : "未知艺术家");
+
+        // 获取 extras
+        Bundle extras = metadata.extras;
+        if (extras != null) {
+            String lyrics = extras.getString("lyrics", "暂无歌词");
+            String coverImageUrl = extras.getString("coverImageUrl");
+            int playCount = extras.getInt("playCount", 0);
+
+            lyricsTextView.setText(lyrics);
+
+            if (coverImageUrl != null && !coverImageUrl.isEmpty()) {
+                // 使用 Picasso 加载封面图片
+                Picasso.get()
+                        .load(coverImageUrl)
+                        .placeholder(R.drawable.placeholder) // 替换为您的占位图
+                        .error(R.drawable.error) // 替换为您的错误图
+                        .into(coverImageView);
+            } else {
+                coverImageView.setImageResource(R.drawable.placeholder); // 替换为您的占位图
+            }
+
+            Log.d("ExoPlayer", "播放次数: " + playCount);
+            // 可以在 UI 中显示播放次数，如增加一个 TextView
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 释放 ExoPlayer 资源
+        player.release();
+    }
+}
+```
+
+#### 说明：
+
+1. **添加自定义数据**：
+    - 创建一个 `Bundle` 对象，存储自定义数据，如歌词、封面图片URL、播放次数等。
+    - 使用 `setExtras` 方法将 `Bundle` 添加到 `MediaMetadata` 中。
+
+2. **关联 `MediaMetadata` 到 `MediaItem`**：
+    - 在创建 `MediaItem` 时，通过 `setMediaMetadata` 方法将 `MediaMetadata` 关联到 `MediaItem`。
+
+3. **监听播放状态变化**：
+    - 通过实现 `Player.Listener` 并重写 `onMediaItemTransition` 和 `onPlaybackStateChanged` 方法，监听播放项的切换和播放状态变化。
+    - 在播放项切换或准备就绪时，调用 `updateUI` 方法更新界面。
+
+4. **更新 UI**：
+    - 在 `updateUI` 方法中，从 `MediaMetadata` 中提取标准字段（如标题、艺术家）和自定义数据（`extras`）。
+    - 使用第三方库（如 Picasso）加载封面图片。
+    - 显示歌词和其他自定义数据。
+
+5. **资源管理**：
+    - 在 `onDestroy` 方法中释放 ExoPlayer 资源，防止内存泄漏。
+
+## 最佳实践
+
+1. **合理使用 `extras`**：
+    - 仅在需要存储额外信息时使用 `extras`，避免存储过多或不必要的数据。
+    - 确保自定义键的唯一性，避免与 ExoPlayer 内部使用的键冲突。
+
+2. **数据类型选择**：
+    - `Bundle` 支持多种数据类型，但在使用时要确保类型一致性，避免类型转换错误。
+
+3. **第三方库加载图片**：
+    - 使用如 Picasso、Glide 等库加载封面图片，可以简化图片加载过程并处理缓存。
+
+4. **UI 更新**：
+    - 确保在主线程中更新 UI，避免因线程问题导致的崩溃或不一致性。
+
+5. **错误处理**：
+    - 在加载自定义数据时，添加必要的空值检查，避免因数据缺失导致的应用崩溃。
+
+6. **封装逻辑**：
+    - 将与媒体项相关的逻辑封装在单独的类或方法中，提高代码的可维护性和可读性。
+
+## 注意事项
+
+1. **兼容性**：
+    - 确保使用的 ExoPlayer 版本支持 `setExtras` 方法。建议使用最新版本的 ExoPlayer 以获取最新功能和修复。
+
+2. **数据存储限制**：
+    - `Bundle` 有大小限制，不适合存储大量数据。对于大数据，考虑使用其他方式，如数据库或文件存储。
+
+3. **性能考虑**：
+    - 在播放过程中频繁更新 `MediaMetadata` 可能影响性能，尽量减少不必要的更新。
+
+4. **安全性**：
+    - 如果存储敏感数据，确保数据的安全性和隐私性，避免在 `extras` 中存储敏感信息。
+
+## 总结
+
+通过使用 `MediaMetadata.setExtras` 方法，您可以为 ExoPlayer 的 `MediaItem` 添加自定义的扩展数据，满足更复杂的需求。这些自定义数据可以帮助您在应用中展示更丰富的信息，如歌词、封面图片URL、播放次数等。以下是关键要点的总结：
+
+1. **创建并设置 `extras`**：
+    - 使用 `Bundle` 存储自定义数据，并通过 `setExtras` 方法添加到 `MediaMetadata` 中。
+
+2. **关联 `MediaMetadata` 到 `MediaItem`**：
+    - 在创建 `MediaItem` 时，通过 `setMediaMetadata` 方法关联 `MediaMetadata`。
+
+3. **监听播放状态变化**：
+    - 实现 `Player.Listener` 并重写相关方法，监听播放列表的变化和播放项的切换。
+
+4. **更新 UI**：
+    - 在播放项切换或播放状态变化时，提取 `extras` 中的自定义数据，并更新 UI 组件。
+
+5. **遵循最佳实践**：
+    - 合理使用 `extras`，选择合适的数据类型，确保线程安全，管理资源，处理错误等。
+
+通过掌握 `setExtras` 的使用方法，您可以大幅提升 ExoPlayer 在应用中的灵活性和功能性，打造更具互动性和信息量的媒体播放体验。如果您在实现过程中遇到任何问题，欢迎继续提问！
