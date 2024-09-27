@@ -436,3 +436,202 @@ Log.setLogLevel(Log.DEBUG)
 - [OkHttp 官方文档](https://square.github.io/okhttp/)
 
 通过以上步骤，您应该能够解决 ExoPlayer 在处理从 **HTTPS** 重定向到 **HTTP** 时遇到的问题。如果在实施过程中仍然遇到困难，请提供更多的日志信息或代码片段，以便进一步协助您解决问题。
+
+
+在使用 ExoPlayer 时，自定义缓存规则可以帮助你更好地控制媒体内容的缓存行为，从而优化应用的性能和用户体验。以下是如何在 ExoPlayer 中实现自定义缓存规则的详细步骤和示例代码。
+
+## 1. 引入必要的依赖
+
+首先，确保在 `build.gradle` 文件中引入了 ExoPlayer 及其缓存相关的依赖：
+
+```groovy
+implementation 'com.google.android.exoplayer:exoplayer:2.X.X' // 替换为最新版本
+implementation 'com.google.android.exoplayer:extension-okhttp:2.X.X'
+```
+
+## 2. 创建缓存实例
+
+ExoPlayer 提供了 `SimpleCache` 类用于管理缓存。你可以在应用的全局范围内创建一个单例的缓存实例。
+
+```kotlin
+import com.google.android.exoplayer2.upstream.cache.SimpleCache
+import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor
+import java.io.File
+
+object CacheManager {
+    private const val CACHE_SIZE: Long = 100 * 1024 * 1024 // 100MB
+    private val cacheDir: File by lazy {
+        File(MyApplication.context.cacheDir, "media_cache")
+    }
+
+    val simpleCache: SimpleCache by lazy {
+        SimpleCache(cacheDir, LeastRecentlyUsedCacheEvictor(CACHE_SIZE))
+    }
+}
+```
+
+### 说明：
+
+- **缓存目录**：在设备的缓存目录下创建一个名为 `media_cache` 的文件夹用于存储缓存文件。
+- **缓存大小**：使用 `LeastRecentlyUsedCacheEvictor` 设置缓存的最大大小（例如 100MB）。当缓存超过此大小时，最久未使用的缓存将被清除。
+
+## 3. 自定义缓存策略
+
+如果你需要更复杂的缓存策略，可以实现 `CacheEvictor` 接口或扩展现有的实现。例如，按照特定的文件类型或其他规则来决定缓存内容。
+
+以下示例展示如何自定义缓存策略，仅缓存特定扩展名的媒体文件：
+
+```kotlin
+import com.google.android.exoplayer2.upstream.cache.CacheEvictor
+
+class CustomCacheEvictor(
+    private val maxCacheSize: Long,
+    private val allowedExtensions: Set<String>
+) : CacheEvictor {
+    
+    private val evictor = LeastRecentlyUsedCacheEvictor(maxCacheSize)
+    
+    override fun onCacheInitialized() {
+        evictor.onCacheInitialized()
+    }
+
+    override fun onStartFile(uri: Uri, contentLength: Long, key: String, isNetwork: Boolean) {
+        if (isAllowedExtension(uri)) {
+            evictor.onStartFile(uri, contentLength, key, isNetwork)
+        }
+    }
+
+    override fun onSpanAdded(key: String, span: CacheSpan) {
+        evictor.onSpanAdded(key, span)
+    }
+
+    override fun onSpanRemoved(key: String, span: CacheSpan) {
+        evictor.onSpanRemoved(key, span)
+    }
+
+    private fun isAllowedExtension(uri: Uri): Boolean {
+        val path = uri.path ?: return false
+        return allowedExtensions.any { path.endsWith(it, ignoreCase = true) }
+    }
+}
+```
+
+### 使用自定义 Evictor：
+
+```kotlin
+val allowedExtensions = setOf(".mp4", ".mkv") // 仅缓存 mp4 和 mkv 文件
+val customEvictor = CustomCacheEvictor(200 * 1024 * 1024, allowedExtensions) // 200MB
+
+val simpleCache = SimpleCache(cacheDir, customEvictor)
+```
+
+## 4. 配置数据源工厂
+
+为了让 ExoPlayer 使用自定义的缓存，你需要配置 `CacheDataSource.Factory` 并将其传递给播放器。
+
+```kotlin
+import com.google.android.exoplayer2.upstream.DataSource
+import com.google.android.exoplayer2.upstream.cache.CacheDataSource
+import com.google.android.exoplayer2.upstream.cache.CacheDataSource.Factory
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
+import com.google.android.exoplayer2.util.Util
+
+val context: Context = MyApplication.context
+val userAgent = Util.getUserAgent(context, "YourAppName")
+
+val defaultDataSourceFactory: DataSource.Factory = DefaultDataSourceFactory(
+    context, userAgent
+)
+
+val cacheDataSourceFactory: DataSource.Factory = CacheDataSource.Factory()
+    .setCache(CacheManager.simpleCache)
+    .setUpstreamDataSourceFactory(defaultDataSourceFactory)
+    .setCacheWriteDataSinkFactory(null) // 可根据需求设置缓存写入规则
+    .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+```
+
+## 5. 构建播放器并设置媒体源
+
+使用配置好的 `cacheDataSourceFactory` 创建媒体源，并将其设置给 ExoPlayer。
+
+```kotlin
+import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.source.ProgressiveMediaSource
+
+val player = ExoPlayer.Builder(context).build()
+
+val mediaItem = MediaItem.fromUri("https://example.com/media/video.mp4")
+
+val mediaSource = ProgressiveMediaSource.Factory(cacheDataSourceFactory)
+    .createMediaSource(mediaItem)
+
+player.setMediaSource(mediaSource)
+player.prepare()
+player.play()
+```
+
+## 6. 进阶：使用 OkHttp 进行网络请求
+
+如果你使用 OkHttp 作为网络堆栈，可以将其与缓存结合使用，以提高缓存的灵活性和性能。
+
+### 添加 OkHttp 依赖
+
+确保在 `build.gradle` 中添加 OkHttp 的依赖：
+
+```groovy
+implementation 'com.squareup.okhttp3:okhttp:4.10.0' // 替换为最新版本
+```
+
+### 配置 OkHttpDataSourceFactory
+
+```kotlin
+import com.google.android.exoplayer2.upstream.okhttp.OkHttpDataSource
+import com.google.android.exoplayer2.upstream.okhttp.OkHttpDataSourceFactory
+import okhttp3.OkHttpClient
+
+val okHttpClient = OkHttpClient.Builder()
+    .cache(Cache(File(context.cacheDir, "http_cache"), 50 * 1024 * 1024)) // 50MB
+    .build()
+
+val okHttpDataSourceFactory = OkHttpDataSourceFactory(
+    okHttpClient, userAgent
+)
+
+val cacheDataSourceFactory: DataSource.Factory = CacheDataSource.Factory()
+    .setCache(CacheManager.simpleCache)
+    .setUpstreamDataSourceFactory(okHttpDataSourceFactory)
+    .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+```
+
+## 7. 清理缓存
+
+你可以根据需要清理缓存，例如在用户退出应用时或达到某些条件时。
+
+```kotlin
+// 清理所有缓存
+CacheManager.simpleCache.release()
+```
+
+或者，清除特定的缓存条目：
+
+```kotlin
+import com.google.android.exoplayer2.upstream.cache.Cache
+
+fun removeCacheForUri(uri: Uri) {
+    val key = CacheUtil.getCacheKey(uri)
+    CacheManager.simpleCache.removeResource(key)
+}
+```
+
+## 8. 注意事项
+
+- **多线程访问**：`SimpleCache` 是线程安全的，但确保在应用的生命周期内正确管理其实例，避免内存泄漏。
+- **缓存策略**：根据应用需求选择合适的缓存策略（如 LRU、FIFO 等），并合理设置缓存大小。
+- **权限**：确保应用有读写缓存目录的权限，尤其是在 Android 6.0 及以上版本中需要动态权限管理。
+
+## 总结
+
+通过上述步骤，你可以在 ExoPlayer 中实现自定义的缓存规则，以满足特定的应用需求。自定义缓存策略不仅可以优化网络使用，还能提升用户的播放体验。根据实际情况调整缓存大小、缓存目录和缓存策略，以达到最佳效果。
+
+如果在实现过程中遇到问题，建议参考 [ExoPlayer 官方文档](https://exoplayer.dev/) 以及相关的示例项目，以获得更多详细的信息和指导。
